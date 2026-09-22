@@ -55,6 +55,28 @@
 						"type": "boolean",
 						"default": true,
 						"markdownDescription": "Also use `#inlineSvgPreview.currentColor#` as the default fill for shapes with no `fill` set (they otherwise render black). SVGs that set their own `fill` or `color` on the root element are left unchanged."
+					},
+					"inlineSvgPreview.inlineSize": {
+						"type": [
+							"number",
+							"null"
+						],
+						"default": null,
+						"minimum": 6,
+						"maximum": 64,
+						"markdownDescription": "Size in px of the icon shown before each SVG. Leave empty (`null`) to match `#editor.fontSize#`."
+					},
+					"inlineSvgPreview.hoverSize": {
+						"type": "number",
+						"default": 50,
+						"minimum": 8,
+						"maximum": 500,
+						"markdownDescription": "Size in px of the SVG shown when hovering (its longer side; the aspect ratio is kept)."
+					},
+					"inlineSvgPreview.hoverBackground": {
+						"type": "string",
+						"default": "none",
+						"markdownDescription": "Background behind the hover image:\n- `none`: the hover popup background\n- `checkerboard`: a gray checkerboard, so both dark and light icons stay visible\n- `contrast`: dark or light, opposite to `#inlineSvgPreview.currentColor#`\n- any CSS color, e.g. `#ffffff`"
 					}
 				}
 			}

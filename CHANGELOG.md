@@ -8,6 +8,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ### Added
 - `inlineSvgPreview.currentColor` and `inlineSvgPreview.applyColorToFill` settings, so `currentColor` icons are visible on dark themes.
+- `inlineSvgPreview.inlineSize` and `inlineSvgPreview.hoverSize` settings (hover was fixed at 50px).
+- `inlineSvgPreview.hoverBackground` setting: `checkerboard`, `contrast`, or any CSS color behind the hover image.
 - JSX support: camelCase attributes, `className`, literal `{expressions}`, and react-native-svg tags.
 - Gallery Refresh button; the gallery also refreshes on save, theme change, and settings change.
 

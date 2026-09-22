@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
-import { CONFIG_SECTION, getPreviewColor } from './utils/config';
+import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor } from './utils/config';
 import { findSvgs, removeEscape, svg2Base64 } from './utils/svg';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -20,26 +20,30 @@ export function activate(context: vscode.ExtensionContext) {
 		const { document } = activeEditor;
 		const svgPreviews: vscode.DecorationOptions[] = [];
 		const previewColor = getPreviewColor();
-		const fontSize = vscode.workspace.getConfiguration('editor', document).get<number>('fontSize', 14);
+		const inlineSize = getInlineSize(document);
+		const hoverSize = getHoverSize();
+		const hoverBackground = getHoverBackground(previewColor);
 		for (const { index, code } of findSvgs(document.getText())) {
 			const svg = removeEscape(code);
-			const decorationImage = svg2Base64(svg, { height: fontSize, width: fontSize }, previewColor);
-			const hoverImage = svg2Base64(svg, undefined, previewColor);
+			const decorationImage = svg2Base64(svg, { size: inlineSize, previewColor });
+			const hoverImage = svg2Base64(svg, { size: hoverSize, keepAspectRatio: true, previewColor, background: hoverBackground });
 			// Skip SVGs that can't be parsed (e.g. heavy JSX) instead of failing the whole file.
-			if (!decorationImage || !hoverImage) {
+			if (!decorationImage || !hoverImage?.renderedSize) {
 				continue;
 			}
 			const { width, height } = hoverImage.originalSize;
 			const sizeLabel = width && height ? `\n\n${width}×${height}` : '';
+			const rendered = hoverImage.renderedSize;
 			const startPos = document.positionAt(index);
 			const endPos = document.positionAt(index + code.length);
 			svgPreviews.push({
 				range: new vscode.Range(startPos, endPos),
-				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=50)${sizeLabel}`),
+				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height})${sizeLabel}`),
 				renderOptions: {
 					before: {
 						contentIconPath: vscode.Uri.parse(decorationImage.base64),
-						height: `${fontSize}px`,
+						height: `${inlineSize}px`,
+						width: `${inlineSize}px`,
 					},
 				},
 			});

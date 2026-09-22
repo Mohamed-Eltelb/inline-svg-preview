@@ -30,7 +30,7 @@ const loadGroups = async (): Promise<GalleryGroup[] | undefined> => {
             return undefined
         }
         const matches = findSvgs(text).flatMap(({ index, code }) => {
-            const image = svg2Base64(removeEscape(code), { height: 40, width: 40 }, previewColor)
+            const image = svg2Base64(removeEscape(code), { size: 40, previewColor })
             return image ? [{ index, base64: image.base64 }] : []
         })
         return matches.length

@@ -117,13 +117,62 @@ const toNumber = (value: unknown) => {
 export type SvgImage = {
     base64: string
     originalSize: { height?: string, width?: string }
+    /** Rendered size in px, when a size was requested. */
+    renderedSize?: { height: number, width: number }
+}
+
+export type SvgImageOptions = {
+    /** Size in px of the box the image is fitted into. */
+    size?: number
+    /** Keep the SVG's aspect ratio instead of rendering a size × size square. */
+    keepAspectRatio?: boolean
+    previewColor?: PreviewColor
+    /** `checkerboard` or any CSS color, drawn behind the SVG with a little padding. */
+    background?: string
+}
+
+// Reads the width/height ratio from the viewBox, falling back to width/height.
+const getAspectRatio = (root: Record<string, any>) => {
+    const viewBox = String(root['@_viewBox'] ?? '').trim().split(/[\s,]+/).map(Number);
+    if (viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
+        return viewBox[2] / viewBox[3];
+    }
+    const width = toNumber(root['@_width']);
+    const height = toNumber(root['@_height']);
+    return width && height ? width / height : 1;
+}
+
+const escapeAttr = (value: string) => value.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+// Nests the SVG inside a padded outer SVG that paints the background first.
+const wrapWithBackground = (innerSvg: string, width: number, height: number, padding: number, background: string) => {
+    const outerWidth = width + padding * 2;
+    const outerHeight = height + padding * 2;
+    let backdrop: string;
+    if (background === 'checkerboard') {
+        const cell = Math.max(4, Math.round(Math.max(outerWidth, outerHeight) / 8));
+        // Mid-gray tones so both black and white icons stay visible.
+        backdrop = `<defs><pattern id="__isp_checker" width="${cell * 2}" height="${cell * 2}" patternUnits="userSpaceOnUse">`
+            + `<rect width="${cell * 2}" height="${cell * 2}" fill="#8c8c8c"/>`
+            + `<rect width="${cell}" height="${cell}" fill="#737373"/><rect x="${cell}" y="${cell}" width="${cell}" height="${cell}" fill="#737373"/>`
+            + `</pattern></defs><rect width="100%" height="100%" rx="3" fill="url(#__isp_checker)"/>`;
+    } else {
+        backdrop = `<rect width="100%" height="100%" rx="3" fill="${escapeAttr(background)}"/>`;
+    }
+    const inner = innerSvg.replace(/^<svg\b/, `<svg x="${padding}" y="${padding}"`);
+    return {
+        svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth}" height="${outerHeight}" viewBox="0 0 ${outerWidth} ${outerHeight}">${backdrop}${inner}</svg>`,
+        width: outerWidth,
+        height: outerHeight,
+    };
 }
 
 /**
  * Turns SVG source (plain or JSX) into a data URI.
  * Returns undefined when the code can't be parsed as an SVG.
  */
-export const svg2Base64 = (code: string, size?: {height: number, width: number}, previewColor?: PreviewColor): SvgImage | undefined => {
+export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImage | undefined => {
+    const { size, keepAspectRatio, previewColor, background } = options;
     let svgObj: Record<string, any>;
     try {
         svgObj = parser.parse(stripJsx(code));
@@ -149,15 +198,23 @@ export const svg2Base64 = (code: string, size?: {height: number, width: number},
     }
 
     const originalSize = { height: root['@_height'], width: root['@_width'] };
+    let renderedSize: SvgImage['renderedSize'];
+    // The background's padding fits inside the requested size.
+    const padding = background && size ? Math.max(2, Math.round(size * 0.08)) : 0;
     if (size) {
+        const box = Math.max(1, size - padding * 2);
+        const ratio = keepAspectRatio ? getAspectRatio(root) : 1;
         // Without a viewBox, shrinking width/height would crop instead of scale.
         const width = toNumber(originalSize.width);
         const height = toNumber(originalSize.height);
         if (root['@_viewBox'] === undefined && width && height) {
             root['@_viewBox'] = `0 0 ${width} ${height}`;
         }
-        root['@_width'] = size.width;
-        root['@_height'] = size.height;
+        renderedSize = ratio >= 1
+            ? { width: box, height: Math.max(1, Math.round(box / ratio)) }
+            : { width: Math.max(1, Math.round(box * ratio)), height: box };
+        root['@_width'] = renderedSize.width;
+        root['@_height'] = renderedSize.height;
     }
     if (previewColor) {
         // An SVG rendered as an image has no inherited color, so currentColor and
@@ -177,9 +234,15 @@ export const svg2Base64 = (code: string, size?: {height: number, width: number},
     } catch {
         return undefined;
     }
+    if (background && renderedSize) {
+        const wrapped = wrapWithBackground(svg, renderedSize.width, renderedSize.height, padding, background);
+        svg = wrapped.svg;
+        renderedSize = { width: wrapped.width, height: wrapped.height };
+    }
     return {
         base64: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
         originalSize,
+        renderedSize,
     };
 }
 
