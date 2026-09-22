@@ -1,24 +1,26 @@
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
-import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor, getThemeKind } from './utils/config';
+import { GutterIcons } from './gutter';
+import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor, getPreviewPosition, getThemeKind } from './utils/config';
 import { findSvgs, removeEscape, svg2Base64 } from './utils/svg';
 
 export function activate(context: vscode.ExtensionContext) {
 	let timeout: ReturnType<typeof setTimeout> | undefined = undefined;
-	let activeEditor = vscode.window.activeTextEditor;
+	// Carries the hover and, in inline mode, the icon before the SVG code.
 	const svgPreviewDecorationType = vscode.window.createTextEditorDecorationType({});
+	const gutterIcons = new GutterIcons();
 	context.subscriptions.push(
 		svgPreviewDecorationType,
+		gutterIcons,
 		{ dispose: () => timeout && clearTimeout(timeout) },
 		vscode.commands.registerCommand(`${CONFIG_SECTION}.gallery`, () => showGallery(context))
 	);
 
-	function updateDecorations() {
-		if (!activeEditor) {
-			return;
-		}
-		const { document } = activeEditor;
+	function updateDecorations(editor: vscode.TextEditor) {
+		const { document } = editor;
 		const svgPreviews: vscode.DecorationOptions[] = [];
+		const icons: { image: string, line: number }[] = [];
+		const position = getPreviewPosition();
 		const previewColor = getPreviewColor();
 		const inlineSize = getInlineSize(document);
 		const hoverSize = getHoverSize();
@@ -26,10 +28,11 @@ export function activate(context: vscode.ExtensionContext) {
 		const theme = getThemeKind();
 		for (const { index, code } of findSvgs(document.getText())) {
 			const svg = removeEscape(code);
-			const decorationImage = svg2Base64(svg, { size: inlineSize, previewColor });
+			// In the gutter the icon is scaled to fit, so keep its shape instead of squashing it square.
+			const iconImage = svg2Base64(svg, { size: inlineSize, keepAspectRatio: position === 'gutter', previewColor });
 			const hoverImage = svg2Base64(svg, { size: hoverSize, keepAspectRatio: true, previewColor, background: hoverBackground, theme });
 			// Skip SVGs that can't be parsed (e.g. heavy JSX) instead of failing the whole file.
-			if (!decorationImage || !hoverImage?.renderedSize) {
+			if (!iconImage || !hoverImage?.renderedSize) {
 				continue;
 			}
 			const { width, height } = hoverImage.originalSize;
@@ -40,16 +43,24 @@ export function activate(context: vscode.ExtensionContext) {
 			svgPreviews.push({
 				range: new vscode.Range(startPos, endPos),
 				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height})${sizeLabel}`),
-				renderOptions: {
+				renderOptions: position === 'inline' ? {
 					before: {
-						contentIconPath: vscode.Uri.parse(decorationImage.base64),
+						contentIconPath: vscode.Uri.parse(iconImage.base64),
 						height: `${inlineSize}px`,
 						width: `${inlineSize}px`,
 					},
-				},
+				} : undefined,
 			});
+			if (position === 'gutter') {
+				icons.push({ image: iconImage.base64, line: startPos.line });
+			}
 		}
-		activeEditor.setDecorations(svgPreviewDecorationType, svgPreviews);
+		editor.setDecorations(svgPreviewDecorationType, svgPreviews);
+		gutterIcons.set(editor, icons);
+	}
+
+	function updateVisibleEditors() {
+		vscode.window.visibleTextEditors.forEach(updateDecorations);
 	}
 
 	function triggerUpdateDecorations(throttle = false) {
@@ -57,36 +68,44 @@ export function activate(context: vscode.ExtensionContext) {
 			clearTimeout(timeout);
 			timeout = undefined;
 		}
+		const editor = vscode.window.activeTextEditor;
+		if (!editor) {
+			return;
+		}
 		if (throttle) {
-			timeout = setTimeout(updateDecorations, 500);
+			timeout = setTimeout(() => updateDecorations(editor), 500);
 		} else {
-			updateDecorations();
+			updateDecorations(editor);
 		}
 	}
 
-	if (activeEditor) {
+	updateVisibleEditors();
+
+	vscode.window.onDidChangeActiveTextEditor(() => {
 		triggerUpdateDecorations();
-	}
-	vscode.window.onDidChangeActiveTextEditor(editor => {
-		activeEditor = editor;
-		if (editor) {
-			triggerUpdateDecorations();
-		}
+	}, null, context.subscriptions);
+
+	vscode.window.onDidChangeVisibleTextEditors(() => {
+		updateVisibleEditors();
 	}, null, context.subscriptions);
 
 	vscode.workspace.onDidChangeTextDocument(event => {
-		if (activeEditor && event.document === activeEditor.document) {
+		if (event.document === vscode.window.activeTextEditor?.document) {
 			triggerUpdateDecorations(true);
 		}
 	}, null, context.subscriptions);
 
+	vscode.workspace.onDidCloseTextDocument(document => {
+		gutterIcons.forget(document);
+	}, null, context.subscriptions);
+
 	vscode.window.onDidChangeActiveColorTheme(() => {
-		triggerUpdateDecorations();
+		updateVisibleEditors();
 	}, null, context.subscriptions);
 
 	vscode.workspace.onDidChangeConfiguration(event => {
 		if (event.affectsConfiguration(CONFIG_SECTION) || event.affectsConfiguration('editor.fontSize')) {
-			triggerUpdateDecorations();
+			updateVisibleEditors();
 		}
 	}, null, context.subscriptions);
 }

@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [Unreleased]
 
 ### Added
+- `inlineSvgPreview.previewPosition` setting: `gutter` shows the preview icon next to the line numbers instead of before the SVG code.
 - `inlineSvgPreview.currentColor` and `inlineSvgPreview.applyColorToFill` settings, so `currentColor` icons are visible on dark themes.
 - `inlineSvgPreview.inlineSize` and `inlineSvgPreview.hoverSize` settings (hover was fixed at 50px).
 - `inlineSvgPreview.hoverBackground` setting: `auto` (default) adds a background only when the SVG's colors are hard to see on the theme; also `none`, `checkerboard`, or any CSS color.

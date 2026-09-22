@@ -8,7 +8,7 @@ JSX is supported: attributes like `strokeWidth` and `className` are converted, `
 
 ![s1](https://cdn.jsdelivr.net/gh/a1245582339/image-hosting@master/s1.3xt6eo1800k0.gif)
 
-Previews show in every file you open, whether or not it's in the workspace.
+Previews show in every file you open, whether or not it's in the workspace. Set `inlineSvgPreview.previewPosition` to `"gutter"` to show the icon next to the line numbers instead, so your code isn't pushed sideways.
 
 |  Key   | Type  |  Example   | Default  
 |  ----  | ----  | ----  | ----  
@@ -16,6 +16,7 @@ Previews show in every file you open, whether or not it's in the workspace.
 | "inlineSvgPreview.gallery.exclude"  | `null` \| `string[]` | `["src/legacy"]` | `null` (files the gallery leaves out)
 | "inlineSvgPreview.currentColor"  | `string` | `"#ffffff"` | `"auto"` (light on dark themes, dark on light themes; `""` disables)
 | "inlineSvgPreview.applyColorToFill"  | `boolean` | `false` | `true` (also use the color as the default fill)
+| "inlineSvgPreview.previewPosition"  | `"inline"` \| `"gutter"` | `"gutter"` | `"inline"` (icon before the SVG code, or in the gutter)
 | "inlineSvgPreview.inlineSize"  | `null` \| `number` | `18` | `null` (editor font size)
 | "inlineSvgPreview.hoverSize"  | `number` | `120` | `50`
 | "inlineSvgPreview.hoverBackground"  | `string` | `"checkerboard"` | `"auto"` (background only when the SVG is hard to see; also `"none"` or any CSS color)

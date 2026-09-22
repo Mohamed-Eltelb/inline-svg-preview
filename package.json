@@ -56,6 +56,19 @@
 						"default": true,
 						"markdownDescription": "Also use `#inlineSvgPreview.currentColor#` as the default fill for shapes with no `fill` set (they otherwise render black). SVGs that set their own `fill` or `color` on the root element are left unchanged."
 					},
+					"inlineSvgPreview.previewPosition": {
+						"type": "string",
+						"enum": [
+							"inline",
+							"gutter"
+						],
+						"enumDescriptions": [
+							"Show the icon before the SVG code, pushing the code sideways.",
+							"Show the icon in the gutter next to the line numbers, on the line where the SVG starts. Your code isn't moved."
+						],
+						"default": "inline",
+						"markdownDescription": "Where the small SVG preview icon is shown. Hovering the SVG code shows the large preview either way."
+					},
 					"inlineSvgPreview.inlineSize": {
 						"type": [
 							"number",
@@ -64,7 +77,7 @@
 						"default": null,
 						"minimum": 6,
 						"maximum": 64,
-						"markdownDescription": "Size in px of the icon shown before each SVG. Leave empty (`null`) to match `#editor.fontSize#`."
+						"markdownDescription": "Size in px of the icon shown before each SVG. Leave empty (`null`) to match `#editor.fontSize#`. Not used when `#inlineSvgPreview.previewPosition#` is `gutter`, where the icon fits the gutter."
 					},
 					"inlineSvgPreview.hoverSize": {
 						"type": "number",

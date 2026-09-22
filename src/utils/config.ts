@@ -62,6 +62,10 @@ export const getInlineSize = (document?: vscode.TextDocument) => {
         : vscode.workspace.getConfiguration('editor', document).get<number>('fontSize', 14)
 }
 
+/** Where the small preview icon goes: before the SVG code, or in the gutter. */
+export const getPreviewPosition = (): 'inline' | 'gutter' =>
+    vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('previewPosition') === 'gutter' ? 'gutter' : 'inline'
+
 export const getHoverSize = () =>
     Math.max(8, vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>('hoverSize', 50))
 
