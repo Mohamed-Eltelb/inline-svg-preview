@@ -1,7 +1,7 @@
 import path from 'path';
 import * as vscode from 'vscode';
 import fs from 'fs/promises'
-import { getCwd, getGlobPaths } from './utils/config';
+import { getCwd, getGlobPaths, getPreviewColor } from './utils/config';
 import { removeEscape, svg2Base64, SVGReg } from './utils/svg';
 
 
@@ -23,6 +23,7 @@ export const showGallery = async (context: vscode.ExtensionContext) => {
     );
     const srcURL = panel.webview.asWebviewUri(vscode.Uri.file(path.join(context.extensionPath, 'out/page/gallery/main.js')))
     panel.webview.html = getWebviewContent(srcURL);
+    const previewColor = getPreviewColor()
     const SVGFileContent = (await Promise.all(globPaths.map(filePath => fs.readFile(path.join(getCwd()!, filePath)))))
         .map((buffer, index) => {
             const fileStr = buffer.toString('utf-8')
@@ -31,7 +32,7 @@ export const showGallery = async (context: vscode.ExtensionContext) => {
             while (match = SVGReg.exec(fileStr)) {
                 const { index } = match
                 matches.push({
-                    ...svg2Base64(removeEscape(match[0]), { height: 40, width: 40 }),
+                    ...svg2Base64(removeEscape(match[0]), { height: 40, width: 40 }, previewColor),
                     index
                 })
             }

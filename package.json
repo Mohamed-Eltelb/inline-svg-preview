@@ -43,6 +43,16 @@
 							"null"
 						],
 						"default": null
+					},
+					"spic.currentColor": {
+						"type": "string",
+						"default": "auto",
+						"markdownDescription": "Color used for `currentColor` in SVG previews. `auto` picks a light color on dark themes and a dark color on light themes. Any CSS color works (e.g. `#ffffff`, `tomato`). Leave empty to disable (renders black, like a plain image)."
+					},
+					"spic.applyColorToFill": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Also use `#spic.currentColor#` as the default fill for shapes with no `fill` set (they otherwise render black). SVGs that set their own `fill` or `color` on the root element are left unchanged."
 					}
 				}
 			}

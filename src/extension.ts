@@ -1,7 +1,7 @@
 import path = require('path');
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
-import { getCwd, getGlobPaths } from './utils/config';
+import { getCwd, getGlobPaths, getPreviewColor } from './utils/config';
 import { removeEscape, svg2Base64, SVGReg } from './utils/svg';
 export function activate(context: vscode.ExtensionContext) {
 	let timeout: NodeJS.Timer | undefined = undefined;
@@ -24,14 +24,15 @@ export function activate(context: vscode.ExtensionContext) {
 
 		const text = activeEditor.document.getText();
 		const svgPreviews: vscode.DecorationOptions[] = [];
+		const previewColor = getPreviewColor()
 		let match;
 		while (match = SVGReg.exec(text)) {
 			const startPos = activeEditor.document.positionAt(match.index);
 			const endPos = activeEditor.document.positionAt(match.index + match[0].length);
 			let svg = removeEscape(match[0])
 			const fontSize = vscode.workspace.getConfiguration('editor').get('fontSize') as number
-			const decorationBase64Result = svg2Base64(svg, {height: fontSize, width: fontSize})
-			const hoverBase64Result = svg2Base64(svg)
+			const decorationBase64Result = svg2Base64(svg, {height: fontSize, width: fontSize}, previewColor)
+			const hoverBase64Result = svg2Base64(svg, undefined, previewColor)
 			const hoverMessage = new vscode.MarkdownString(`![svg](${hoverBase64Result.base64}|width=50)\n\n${hoverBase64Result.originalSize.width}×${hoverBase64Result.originalSize.height}`)
 			const decoration: vscode.DecorationOptions = {
 				range: new vscode.Range(startPos.line, startPos.character, endPos.line, endPos.character),
@@ -73,6 +74,16 @@ export function activate(context: vscode.ExtensionContext) {
 	vscode.workspace.onDidChangeTextDocument(event => {
 		if (activeEditor && event.document === activeEditor.document) {
 			triggerUpdateDecorations(true);
+		}
+	}, null, context.subscriptions);
+
+	vscode.window.onDidChangeActiveColorTheme(() => {
+		triggerUpdateDecorations();
+	}, null, context.subscriptions);
+
+	vscode.workspace.onDidChangeConfiguration(event => {
+		if (event.affectsConfiguration('spic')) {
+			triggerUpdateDecorations();
 		}
 	}, null, context.subscriptions);
 }

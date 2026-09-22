@@ -12,6 +12,8 @@ By default, this plugin will watch your all files change when your file actived 
 |  ----  | ----  | ----  | ----  
 | "spic.include"  | `null` \| `string[]` | `["src/**/icon.tsx"]` | `null`
 | "spic.exclude"  | `null` \| `string[]` | `["src/**/icon.tsx"]` | `null`
+| "spic.currentColor"  | `string` | `"#ffffff"` | `"auto"` (light on dark themes, dark on light themes; `""` disables)
+| "spic.applyColorToFill"  | `boolean` | `false` | `true` (also use the color as the default fill)
 
 ## SVG Gallery
 

@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as glob from 'glob'
+import { PreviewColor } from './svg';
 
 export const getGlobPaths = () => {
     const include = vscode.workspace.getConfiguration('spic').get<string[]>('include')
@@ -16,6 +17,20 @@ export const getGlobPaths = () => {
 		})).flat()))
 	}
     return includeGlobPaths
+}
+
+export const getPreviewColor = (): PreviewColor | undefined => {
+    const config = vscode.workspace.getConfiguration('spic')
+    const color = config.get<string>('currentColor', 'auto').trim()
+    if (!color) {
+        return undefined
+    }
+    const { kind } = vscode.window.activeColorTheme
+    const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast
+    return {
+        color: color === 'auto' ? (isDark ? '#cccccc' : '#333333') : color,
+        applyToFill: config.get<boolean>('applyColorToFill', true),
+    }
 }
 
 export const getCwd = () => {
