@@ -7,11 +7,5 @@
         "out": true // set this to false to include "out" folder in search results
     },
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
-    "typescript.tsc.autoDetect": "off",
-    "emeraldwalk.runonsave": {
-        "commands": [{
-            "match": "src\\\\page\\\\.*",
-            "cmd": "npm run build-page"
-        }]
-    }
+    "typescript.tsc.autoDetect": "off"
 }

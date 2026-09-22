@@ -1,50 +1,48 @@
-import path = require('path');
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
-import { getCwd, getGlobPaths, getPreviewColor } from './utils/config';
-import { removeEscape, svg2Base64, SVGReg } from './utils/svg';
+import { CONFIG_SECTION, getPreviewColor } from './utils/config';
+import { findSvgs, removeEscape, svg2Base64 } from './utils/svg';
+
 export function activate(context: vscode.ExtensionContext) {
-	let timeout: NodeJS.Timer | undefined = undefined;
+	let timeout: ReturnType<typeof setTimeout> | undefined = undefined;
 	let activeEditor = vscode.window.activeTextEditor;
 	const svgPreviewDecorationType = vscode.window.createTextEditorDecorationType({});
 	context.subscriptions.push(
-		vscode.commands.registerCommand('spic.gallery', async () => {
-			showGallery(context)
-		})
+		svgPreviewDecorationType,
+		{ dispose: () => timeout && clearTimeout(timeout) },
+		vscode.commands.registerCommand(`${CONFIG_SECTION}.gallery`, () => showGallery(context))
 	);
-	const cwd = getCwd()
+
 	function updateDecorations() {
 		if (!activeEditor) {
 			return;
 		}
-		const globPaths = getGlobPaths()
-		if (globPaths && !globPaths.some(globPath => path.join(cwd!, globPath) === activeEditor!.document.uri.fsPath)) {
-			return
-		}
-
-		const text = activeEditor.document.getText();
+		const { document } = activeEditor;
 		const svgPreviews: vscode.DecorationOptions[] = [];
-		const previewColor = getPreviewColor()
-		let match;
-		while (match = SVGReg.exec(text)) {
-			const startPos = activeEditor.document.positionAt(match.index);
-			const endPos = activeEditor.document.positionAt(match.index + match[0].length);
-			let svg = removeEscape(match[0])
-			const fontSize = vscode.workspace.getConfiguration('editor').get('fontSize') as number
-			const decorationBase64Result = svg2Base64(svg, {height: fontSize, width: fontSize}, previewColor)
-			const hoverBase64Result = svg2Base64(svg, undefined, previewColor)
-			const hoverMessage = new vscode.MarkdownString(`![svg](${hoverBase64Result.base64}|width=50)\n\n${hoverBase64Result.originalSize.width}×${hoverBase64Result.originalSize.height}`)
-			const decoration: vscode.DecorationOptions = {
-				range: new vscode.Range(startPos.line, startPos.character, endPos.line, endPos.character),
-				hoverMessage,
+		const previewColor = getPreviewColor();
+		const fontSize = vscode.workspace.getConfiguration('editor', document).get<number>('fontSize', 14);
+		for (const { index, code } of findSvgs(document.getText())) {
+			const svg = removeEscape(code);
+			const decorationImage = svg2Base64(svg, { height: fontSize, width: fontSize }, previewColor);
+			const hoverImage = svg2Base64(svg, undefined, previewColor);
+			// Skip SVGs that can't be parsed (e.g. heavy JSX) instead of failing the whole file.
+			if (!decorationImage || !hoverImage) {
+				continue;
+			}
+			const { width, height } = hoverImage.originalSize;
+			const sizeLabel = width && height ? `\n\n${width}×${height}` : '';
+			const startPos = document.positionAt(index);
+			const endPos = document.positionAt(index + code.length);
+			svgPreviews.push({
+				range: new vscode.Range(startPos, endPos),
+				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=50)${sizeLabel}`),
 				renderOptions: {
 					before: {
-						contentIconPath: vscode.Uri.parse(decorationBase64Result.base64),
-						height: vscode.workspace.getConfiguration('editor').get('fontSize')
+						contentIconPath: vscode.Uri.parse(decorationImage.base64),
+						height: `${fontSize}px`,
 					},
 				},
-			};
-			svgPreviews.push(decoration);
+			});
 		}
 		activeEditor.setDecorations(svgPreviewDecorationType, svgPreviews);
 	}
@@ -82,8 +80,10 @@ export function activate(context: vscode.ExtensionContext) {
 	}, null, context.subscriptions);
 
 	vscode.workspace.onDidChangeConfiguration(event => {
-		if (event.affectsConfiguration('spic')) {
+		if (event.affectsConfiguration(CONFIG_SECTION) || event.affectsConfiguration('editor.fontSize')) {
 			triggerUpdateDecorations();
 		}
 	}, null, context.subscriptions);
 }
+
+export function deactivate() {}

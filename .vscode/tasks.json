@@ -6,7 +6,6 @@
 		{
 			"type": "npm",
 			"script": "watch",
-			"problemMatcher": "$tsc-watch",
 			"isBackground": true,
 			"presentation": {
 				"reveal": "never"
@@ -14,6 +13,24 @@
 			"group": {
 				"kind": "build",
 				"isDefault": true
+			},
+			// Matches the output format of esbuild.js.
+			"problemMatcher": {
+				"owner": "esbuild",
+				"fileLocation": "relative",
+				"pattern": {
+					"regexp": "^(.+?):(\d+):(\d+): (error|warning): (.*)$",
+					"file": 1,
+					"line": 2,
+					"column": 3,
+					"severity": 4,
+					"message": 5
+				},
+				"background": {
+					"activeBegin": true,
+					"beginsPattern": "\[watch\] build started",
+					"endsPattern": "\[watch\] build finished"
+				}
 			}
 		}
 	]

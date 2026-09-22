@@ -1,15 +1,16 @@
 {
 	"compilerOptions": {
+		// Type checking only; esbuild does the bundling (see esbuild.js).
+		"noEmit": true,
 		"module": "commonjs",
-		"target": "esnext",
-		"outDir": "out",
-		"lib": [
-			"ES2021",
-		],
-		"sourceMap": true,
+		"target": "ES2022",
+		"lib": ["ES2022", "DOM"],
+		"types": ["node", "vscode"],
 		"rootDir": "src",
 		"esModuleInterop": true,
-		"strict": true,
+		"isolatedModules": true,
+		"skipLibCheck": true,
+		"strict": true
 	},
-	"exclude": ["./src/page"]
+	"include": ["src"]
 }
