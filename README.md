@@ -2,6 +2,8 @@
 
 Inline SVG Preview is a plugin that can preview svg code in your file, such as jsx/tsx, html, vue, and svg. There is a thumbnail before your svg tag to preview the svg, and you can hover on your svg code to view the svg in popover.
 
+SVG data URIs are previewed too, in CSS, JS or anywhere else: URL-encoded (`url("data:image/svg+xml,%3Csvg…")`), plain (`data:image/svg+xml;utf8,<svg…>`) and base64 (`data:image/svg+xml;base64,…`).
+
 JSX is supported: attributes like `strokeWidth` and `className` are converted, `{...props}` and non-literal `{expressions}` are ignored, and react-native-svg tags (`<Svg>`, `<Path>`) work too.
 
 ## Preview inline

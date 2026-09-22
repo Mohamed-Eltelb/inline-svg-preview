@@ -14,18 +14,95 @@ const builder = new XMLBuilder(
 );
 
 const SVG_SOURCE = /<svg[\s>][\s\S]*?<\/svg>/.source;
+const DATA_URI_SOURCE = /data:image\/svg\+xml((?:;[\w.+-]+(?:=[\w.+-]+)?)*),/.source;
+// Larger data URIs are skipped to keep the editor responsive.
+const MAX_DATA_URI_LENGTH = 500_000;
 
-export type SvgMatch = { index: number, code: string }
+/** An SVG found in text: `index`/`length` cover the source span, `code` is the SVG markup. */
+export type SvgMatch = { index: number, length: number, code: string }
 
 // Returns a fresh regex each call so no `lastIndex` state is shared between callers.
-export const findSvgs = (text: string): SvgMatch[] => {
+const findSvgTags = (text: string): SvgMatch[] => {
     const reg = new RegExp(SVG_SOURCE, 'gi');
     const matches: SvgMatch[] = [];
     let match;
     while ((match = reg.exec(text))) {
-        matches.push({ index: match.index, code: match[0] });
+        matches.push({ index: match.index, length: match[0].length, code: match[0] });
     }
     return matches;
+}
+
+// Finds where a data URI ends: at the matching quote or `)` it started after,
+// otherwise at whitespace. Backslash-escaped characters (JS/CSS strings) are skipped.
+const findDataUriEnd = (text: string, start: number, bodyStart: number) => {
+    const opener = text[start - 1];
+    const closer = opener === '"' || opener === "'" || opener === '`' ? opener : opener === '(' ? ')' : undefined;
+    let depth = 0;
+    let i = bodyStart;
+    for (; i < text.length && i - start < MAX_DATA_URI_LENGTH; i++) {
+        const char = text[i];
+        if (char === '\\') {
+            i++;
+        } else if (closer === ')' && char === '(') {
+            // Unquoted url(…) may contain e.g. transform='rotate(45)'.
+            depth++;
+        } else if (closer === ')' && char === ')' && depth > 0) {
+            depth--;
+        } else if (closer ? char === closer : /[\s"'`()]/.test(char)) {
+            return i;
+        }
+    }
+    return closer ? -1 : i;
+}
+
+const decodeDataUri = (params: string, body: string) => {
+    try {
+        if (/;base64/i.test(params)) {
+            return Buffer.from(body.replace(/\\\r?\n|\s/g, ''), 'base64').toString('utf8');
+        }
+        // Undo string escapes (`\"`, `\'`, line continuations), then URL encoding.
+        const unescaped = body.replace(/\\\r?\n/g, '').replace(/\\(.)/g, '$1');
+        if (!/%[0-9a-f]{2}/i.test(unescaped)) {
+            return unescaped;
+        }
+        try {
+            return decodeURIComponent(unescaped);
+        } catch {
+            // A stray `%` makes decodeURIComponent throw; decode the valid escapes one by one.
+            return unescaped.replace(/%([0-9a-f]{2})/gi, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+        }
+    } catch {
+        return undefined;
+    }
+}
+
+// SVG data URIs, e.g. url("data:image/svg+xml,%3Csvg…") or 'data:image/svg+xml;base64,…'.
+const findSvgDataUris = (text: string): SvgMatch[] => {
+    const reg = new RegExp(DATA_URI_SOURCE, 'gi');
+    const matches: SvgMatch[] = [];
+    let match;
+    while ((match = reg.exec(text))) {
+        const bodyStart = match.index + match[0].length;
+        const end = findDataUriEnd(text, match.index, bodyStart);
+        if (end <= bodyStart) {
+            continue;
+        }
+        const code = decodeDataUri(match[1], text.slice(bodyStart, end))?.trim();
+        if (code && /^(<\?xml[\s\S]*?\?>\s*)?(<!--[\s\S]*?-->\s*)*<svg[\s>]/i.test(code)) {
+            matches.push({ index: match.index, length: end - match.index, code: code.slice(code.search(/<svg[\s>]/i)) });
+        }
+        reg.lastIndex = end;
+    }
+    return matches;
+}
+
+/** All SVGs in the text: `<svg>` tags and SVG data URIs, in document order. */
+export const findSvgs = (text: string): SvgMatch[] => {
+    const dataUris = findSvgDataUris(text);
+    // A plain-text data URI also contains an `<svg>` tag; keep only the data URI match.
+    const tags = findSvgTags(text).filter(tag =>
+        !dataUris.some(uri => tag.index >= uri.index && tag.index < uri.index + uri.length));
+    return [...dataUris, ...tags].sort((a, b) => a.index - b.index);
 }
 
 export type PreviewColor = { color: string, applyToFill: boolean }

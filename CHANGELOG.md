@@ -12,6 +12,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - `inlineSvgPreview.inlineSize` and `inlineSvgPreview.hoverSize` settings (hover was fixed at 50px).
 - `inlineSvgPreview.hoverBackground` setting: `auto` (default) adds a background only when the SVG's colors are hard to see on the theme; also `none`, `checkerboard`, or any CSS color.
 - JSX support: camelCase attributes, `className`, literal `{expressions}`, and react-native-svg tags.
+- Previews for SVG data URIs (URL-encoded, plain, and base64), e.g. `url("data:image/svg+xml,%3Csvg…")` in CSS or JS strings.
 - Gallery Refresh button; the gallery also refreshes on save, theme change, and settings change.
 
 ### Changed

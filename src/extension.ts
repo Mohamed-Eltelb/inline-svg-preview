@@ -26,7 +26,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const hoverSize = getHoverSize();
 		const hoverBackground = getHoverBackground();
 		const theme = getThemeKind();
-		for (const { index, code } of findSvgs(document.getText())) {
+		for (const { index, length, code } of findSvgs(document.getText())) {
 			const svg = removeEscape(code);
 			// In the gutter the icon is scaled to fit, so keep its shape instead of squashing it square.
 			const iconImage = svg2Base64(svg, { size: inlineSize, keepAspectRatio: position === 'gutter', previewColor });
@@ -39,7 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
 			const sizeLabel = width && height ? `\n\n${width}×${height}` : '';
 			const rendered = hoverImage.renderedSize;
 			const startPos = document.positionAt(index);
-			const endPos = document.positionAt(index + code.length);
+			const endPos = document.positionAt(index + length);
 			svgPreviews.push({
 				range: new vscode.Range(startPos, endPos),
 				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height})${sizeLabel}`),
