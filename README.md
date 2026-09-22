@@ -10,7 +10,7 @@ JSX is supported: attributes like `strokeWidth` and `className` are converted, `
 
 The hover also has actions: **SVG** copies the markup (JSX is converted to plain SVG), **Data URI** and **CSS** copy it ready for `<img src>` or `url(…)`, and **Select** selects the SVG code.
 
-![s1](https://cdn.jsdelivr.net/gh/a1245582339/image-hosting@master/s1.3xt6eo1800k0.gif)
+<img width="1280" height="720" alt="extension" src="https://github.com/user-attachments/assets/9349ba06-1290-4d2e-86af-f300450a3f3c" />
 
 Previews show in every file you open, whether or not it's in the workspace. Set `inlineSvgPreview.previewPosition` to `"gutter"` to show the icon next to the line numbers instead, so your code isn't pushed sideways.
 
@@ -30,9 +30,6 @@ Previews show in every file you open, whether or not it's in the workspace. Set 
 
 **You must set `inlineSvgPreview.gallery.include` or `inlineSvgPreview.gallery.exclude` to choose which files the gallery shows.** These are glob patterns relative to the workspace folder, and an `exclude` entry like `src/legacy` leaves out that whole folder. They only affect the gallery, not inline previews. Setting `include` is recommended, since with only `exclude` the gallery scans every file in the workspace (except `node_modules`).
 
-
-![s2](https://cdn.jsdelivr.net/gh/a1245582339/image-hosting@master/s2.22wcrjjhoctc.gif)
+<img width="1280" height="720" alt="gallary" src="https://github.com/user-attachments/assets/3306a410-38d9-4537-b77b-921bf1bab1c7" />
 
 Run the **SVG Gallery** command (`inlineSvgPreview.gallery`) to show all svgs in your included files. Click an svg to open the file and jump to its code. The gallery refreshes when you save an included file, or with the Refresh button.
-
-_If you manage your svg code as separate `.svg` files and want to see them all in a gallery, Inline SVG Preview is not your best choice. I would recommend you to use [SVG Gallery](https://marketplace.visualstudio.com/items?itemName=developer2006.svg-gallery)_
