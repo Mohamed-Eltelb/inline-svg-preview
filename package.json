@@ -1,14 +1,14 @@
 {
-	"name": "inline-svg-preview",
-	"displayName": "Inline SVG Preview",
+	"name": "inline-svg-previewer",
+	"displayName": "Inline SVG Previewer",
 	"description": "Preview svg code inline.",
 	"repository": {
 		"url": "https://github.com/Mohamed-Eltelb/inline-svg-preview"
 	},
 	"icon": "image/icon.png",
-	"publisher": "Mohamed-Eltelb",
+	"publisher": "MohamedEltelb",
 	"author": "Mohamed Eltelb",
-	"version": "0.0.8",
+	"version": "1.9.0",
 	"engines": {
 		"vscode": "^1.74.0"
 	},
