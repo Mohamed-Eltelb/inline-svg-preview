@@ -38,14 +38,11 @@ export function activate(context: vscode.ExtensionContext) {
 			if (!iconImage || !hoverImage?.renderedSize) {
 				continue;
 			}
-			const { width, height } = hoverImage.originalSize;
-			// Shown as the image's tooltip rather than a line of text under it.
-			const sizeTitle = width && height ? ` "${`${width}×${height}`.replace(/["\\()]/g, '\\$&')}"` : '';
 			const rendered = hoverImage.renderedSize;
 			const startPos = document.positionAt(index);
 			const endPos = document.positionAt(index + length);
 			const hoverMessage = new vscode.MarkdownString(
-				`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height}${sizeTitle})`
+				`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height})`
 					+ (showActions ? `\n\n${hoverActions({ uri: document.uri.toString(), index })}` : ''),
 				true
 			);

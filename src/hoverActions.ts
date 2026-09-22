@@ -13,9 +13,9 @@ const SELECT_SVG = `${CONFIG_SECTION}.selectSvg`;
 /** The commands hover links may run; passed to `MarkdownString.isTrusted`. */
 export const HOVER_COMMANDS = [COPY_SVG, COPY_DATA_URI, COPY_CSS_URL, SELECT_SVG];
 
-// The title is a quoted markdown link title, so quotes, backslashes and parentheses in it are escaped.
-const link = (label: string, command: string, ref: SvgRef, title: string) =>
-	`[${label}](command:${command}?${encodeArgs(ref)} "${title.replace(/["\\()]/g, '\\$&')}")`;
+// No link title: VS Code then shows no tooltip for command links.
+const link = (label: string, command: string, ref: SvgRef) =>
+	`[${label}](command:${command}?${encodeArgs(ref)})`;
 
 // encodeURIComponent leaves `(` `)` as is, and an unbalanced one (e.g. in a file name) would end the link.
 const encodeArgs = (ref: SvgRef) =>
@@ -23,14 +23,18 @@ const encodeArgs = (ref: SvgRef) =>
 
 /** The action links shown under the hover image. Needs `supportThemeIcons` for the icons. */
 export const hoverActions = (ref: SvgRef) => [
-	link('$(copy) SVG', COPY_SVG, ref, 'Copy as SVG markup (JSX is converted to SVG)'),
-	link('$(link) Data URI', COPY_DATA_URI, ref, 'Copy as data:image/svg+xml URI, e.g. for <img src>'),
-	link('$(symbol-color) CSS', COPY_CSS_URL, ref, 'Copy as a CSS url() with a data URI'),
-	link('$(selection) Select', SELECT_SVG, ref, 'Select the SVG code'),
+	link('$(copy) SVG', COPY_SVG, ref),
+	link('$(link) Data URI', COPY_DATA_URI, ref),
+	link('$(symbol-color) CSS', COPY_CSS_URL, ref),
+	link('$(selection) Select', SELECT_SVG, ref),
 ].join(' &nbsp;·&nbsp; ');
+
+// Closes the hover the action was clicked in. The command exists since VS Code 1.97; older versions leave it open.
+const hideHover = () => vscode.commands.executeCommand('editor.action.hideHover').then(undefined, () => undefined);
 
 // Finds the SVG again from the current text, since the document may have changed since the hover was built.
 const resolve = async (ref: SvgRef) => {
+	await hideHover();
 	const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(ref.uri));
 	const match = findSvgs(document.getText()).find(svg => svg.index === ref.index);
 	if (!match) {
