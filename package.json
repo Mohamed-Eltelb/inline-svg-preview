@@ -69,6 +69,11 @@
 						"default": "inline",
 						"markdownDescription": "Where the small SVG preview icon is shown. Hovering the SVG code shows the large preview either way."
 					},
+					"inlineSvgPreview.hoverActions": {
+						"type": "boolean",
+						"default": true,
+						"markdownDescription": "Show action links under the hover image: copy as SVG, data URI or CSS `url()`, and select the SVG code."
+					},
 					"inlineSvgPreview.inlineSize": {
 						"type": [
 							"number",

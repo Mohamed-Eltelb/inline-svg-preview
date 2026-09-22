@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
 import { GutterIcons } from './gutter';
+import { HOVER_COMMANDS, hoverActions, registerHoverCommands } from './hoverActions';
 import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor, getPreviewPosition, getThemeKind } from './utils/config';
 import { findSvgs, removeEscape, svg2Base64 } from './utils/svg';
 
@@ -13,7 +14,8 @@ export function activate(context: vscode.ExtensionContext) {
 		svgPreviewDecorationType,
 		gutterIcons,
 		{ dispose: () => timeout && clearTimeout(timeout) },
-		vscode.commands.registerCommand(`${CONFIG_SECTION}.gallery`, () => showGallery(context))
+		vscode.commands.registerCommand(`${CONFIG_SECTION}.gallery`, () => showGallery(context)),
+		...registerHoverCommands()
 	);
 
 	function updateDecorations(editor: vscode.TextEditor) {
@@ -26,6 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
 		const hoverSize = getHoverSize();
 		const hoverBackground = getHoverBackground();
 		const theme = getThemeKind();
+		const showActions = vscode.workspace.getConfiguration(CONFIG_SECTION).get<boolean>('hoverActions', true);
 		for (const { index, length, code } of findSvgs(document.getText())) {
 			const svg = removeEscape(code);
 			// In the gutter the icon is scaled to fit, so keep its shape instead of squashing it square.
@@ -36,13 +39,20 @@ export function activate(context: vscode.ExtensionContext) {
 				continue;
 			}
 			const { width, height } = hoverImage.originalSize;
-			const sizeLabel = width && height ? `\n\n${width}×${height}` : '';
+			// Shown as the image's tooltip rather than a line of text under it.
+			const sizeTitle = width && height ? ` "${`${width}×${height}`.replace(/["\\()]/g, '\\$&')}"` : '';
 			const rendered = hoverImage.renderedSize;
 			const startPos = document.positionAt(index);
 			const endPos = document.positionAt(index + length);
+			const hoverMessage = new vscode.MarkdownString(
+				`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height}${sizeTitle})`
+					+ (showActions ? `\n\n${hoverActions({ uri: document.uri.toString(), index })}` : ''),
+				true
+			);
+			hoverMessage.isTrusted = { enabledCommands: HOVER_COMMANDS };
 			svgPreviews.push({
 				range: new vscode.Range(startPos, endPos),
-				hoverMessage: new vscode.MarkdownString(`![svg](${hoverImage.base64}|width=${rendered.width},height=${rendered.height})${sizeLabel}`),
+				hoverMessage,
 				renderOptions: position === 'inline' ? {
 					before: {
 						contentIconPath: vscode.Uri.parse(iconImage.base64),

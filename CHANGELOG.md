@@ -7,6 +7,7 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 ## [Unreleased]
 
 ### Added
+- Hover actions: copy the SVG (JSX converted to SVG), copy it as a data URI or CSS `url()`, or select its code.
 - `inlineSvgPreview.previewPosition` setting: `gutter` shows the preview icon next to the line numbers instead of before the SVG code.
 - `inlineSvgPreview.currentColor` and `inlineSvgPreview.applyColorToFill` settings, so `currentColor` icons are visible on dark themes.
 - `inlineSvgPreview.inlineSize` and `inlineSvgPreview.hoverSize` settings (hover was fixed at 50px).

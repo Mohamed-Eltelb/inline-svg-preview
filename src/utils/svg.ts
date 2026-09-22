@@ -328,9 +328,11 @@ const wrapWithBackground = (innerSvg: string, width: number, height: number, pad
  * Turns SVG source (plain or JSX) into a data URI.
  * Returns undefined when the code can't be parsed as an SVG.
  */
-export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImage | undefined => {
-    const { size, keepAspectRatio, previewColor, theme = 'dark' } = options;
-    let { background } = options;
+/**
+ * Parses SVG source (plain or JSX) into a standalone SVG tree with SVG attribute
+ * names and the xmlns declarations it needs. Returns undefined if it isn't an SVG.
+ */
+const parseSvg = (code: string): { svgObj: Record<string, any>, root: Record<string, any> } | undefined => {
     let svgObj: Record<string, any>;
     try {
         svgObj = parser.parse(stripJsx(code));
@@ -354,6 +356,64 @@ export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImag
     if (root['@_xmlns:xlink'] === undefined && JSON.stringify(root).includes('"@_xlink:')) {
         root['@_xmlns:xlink'] = 'http://www.w3.org/1999/xlink';
     }
+    return { svgObj, root };
+}
+
+// Whether the code uses JSX syntax (expressions, capitalized tags, camelCase or renamed attributes).
+const hasJsx = (code: string) => {
+    if (stripJsx(code) !== code || /<\/?[A-Z]/.test(code)) {
+        return true;
+    }
+    for (const [, name] of code.matchAll(/\s([\w:-]+)\s*=/g)) {
+        if (normalizeAttrName(name) !== name) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Converts JSX to SVG on the text itself, not via the parser, which would regroup
+// children by tag name and change their drawing order. Formatting is kept.
+const jsxToSvgText = (code: string) => stripJsx(code)
+    .replace(/<(\/?)([A-Z][\w.]*)/g, (_, slash: string, tag: string) => `<${slash}${normalizeTagName(tag)}`)
+    .replace(/<[a-zA-Z][^<>]*>/g, tag => tag.replace(
+        /(\s)([\w:-]+)(\s*=\s*)("[^"]*"|'[^']*')/g,
+        (_, space: string, name: string, eq: string, value: string) => `${space}${normalizeAttrName(name)}${eq}${value}`
+    ));
+
+/**
+ * The SVG as a standalone `.svg` file's markup: JSX converted to SVG, xmlns added
+ * if missing, otherwise as written. Returns undefined if it isn't a valid SVG.
+ */
+export const toStandaloneSvg = (code: string): string | undefined => {
+    let svg = hasJsx(code) ? jsxToSvgText(code) : code;
+    if (!/^<svg\b[^>]*\sxmlns\s*=/i.test(svg)) {
+        svg = svg.replace(/^<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+    }
+    if (!/^<svg\b[^>]*\sxmlns:xlink\s*=/i.test(svg) && /\sxlink:[\w-]+\s*=/.test(svg)) {
+        svg = svg.replace(/^<svg\b/i, '<svg xmlns:xlink="http://www.w3.org/1999/xlink"');
+    }
+    return parseSvg(svg) ? svg : undefined;
+}
+
+/**
+ * A URL-encoded `data:image/svg+xml,…` URI. Smaller and more readable than base64;
+ * double quotes become single quotes so it fits inside `url("…")` and HTML attributes.
+ */
+export const toDataUri = (svg: string) => {
+    const compact = svg.replace(/>\s+</g, '><').replace(/\s+/g, ' ').trim();
+    const quoted = compact.includes("'") ? compact : compact.replace(/"/g, "'");
+    return `data:image/svg+xml,${quoted.replace(/[%#<>"{}\\^`|\r\n\t]/g, char => encodeURIComponent(char))}`;
+}
+
+export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImage | undefined => {
+    const { size, keepAspectRatio, previewColor, theme = 'dark' } = options;
+    let { background } = options;
+    const parsed = parseSvg(code);
+    if (!parsed) {
+        return undefined;
+    }
+    const { svgObj, root } = parsed;
 
     const originalSize = { height: root['@_height'], width: root['@_width'] };
     if (previewColor) {

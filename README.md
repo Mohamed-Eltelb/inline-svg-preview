@@ -8,6 +8,8 @@ JSX is supported: attributes like `strokeWidth` and `className` are converted, `
 
 ## Preview inline
 
+The hover also has actions: **SVG** copies the markup (JSX is converted to plain SVG), **Data URI** and **CSS** copy it ready for `<img src>` or `url(…)`, and **Select** selects the SVG code.
+
 ![s1](https://cdn.jsdelivr.net/gh/a1245582339/image-hosting@master/s1.3xt6eo1800k0.gif)
 
 Previews show in every file you open, whether or not it's in the workspace. Set `inlineSvgPreview.previewPosition` to `"gutter"` to show the icon next to the line numbers instead, so your code isn't pushed sideways.
@@ -22,6 +24,7 @@ Previews show in every file you open, whether or not it's in the workspace. Set 
 | "inlineSvgPreview.inlineSize"  | `null` \| `number` | `18` | `null` (editor font size)
 | "inlineSvgPreview.hoverSize"  | `number` | `120` | `50`
 | "inlineSvgPreview.hoverBackground"  | `string` | `"checkerboard"` | `"auto"` (background only when the SVG is hard to see; also `"none"` or any CSS color)
+| "inlineSvgPreview.hoverActions"  | `boolean` | `false` | `true` (copy/select links under the hover image)
 
 ## SVG Gallery
 
