@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { showGallery } from './gallery';
-import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor } from './utils/config';
+import { CONFIG_SECTION, getHoverBackground, getHoverSize, getInlineSize, getPreviewColor, getThemeKind } from './utils/config';
 import { findSvgs, removeEscape, svg2Base64 } from './utils/svg';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -22,11 +22,12 @@ export function activate(context: vscode.ExtensionContext) {
 		const previewColor = getPreviewColor();
 		const inlineSize = getInlineSize(document);
 		const hoverSize = getHoverSize();
-		const hoverBackground = getHoverBackground(previewColor);
+		const hoverBackground = getHoverBackground();
+		const theme = getThemeKind();
 		for (const { index, code } of findSvgs(document.getText())) {
 			const svg = removeEscape(code);
 			const decorationImage = svg2Base64(svg, { size: inlineSize, previewColor });
-			const hoverImage = svg2Base64(svg, { size: hoverSize, keepAspectRatio: true, previewColor, background: hoverBackground });
+			const hoverImage = svg2Base64(svg, { size: hoverSize, keepAspectRatio: true, previewColor, background: hoverBackground, theme });
 			// Skip SVGs that can't be parsed (e.g. heavy JSX) instead of failing the whole file.
 			if (!decorationImage || !hoverImage?.renderedSize) {
 				continue;

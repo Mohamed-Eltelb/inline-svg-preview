@@ -1,4 +1,5 @@
 import { XMLParser, XMLBuilder } from "fast-xml-parser";
+import { contrastRatio, getLuminance } from "./color";
 const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: "@_",
@@ -127,8 +128,87 @@ export type SvgImageOptions = {
     /** Keep the SVG's aspect ratio instead of rendering a size × size square. */
     keepAspectRatio?: boolean
     previewColor?: PreviewColor
-    /** `checkerboard` or any CSS color, drawn behind the SVG with a little padding. */
+    /**
+     * `checkerboard` or any CSS color, drawn behind the SVG with a little padding.
+     * `auto` picks one only when the SVG's colors are hard to see on the `theme`.
+     */
     background?: string
+    /** Theme the image is shown on; used by `background: 'auto'`. */
+    theme?: 'dark' | 'light'
+}
+
+const SHAPE_TAGS = new Set(['path', 'rect', 'circle', 'ellipse', 'line', 'polygon', 'polyline', 'text', 'tspan', 'textPath']);
+
+type Paint = { fill?: string, stroke?: string, color: string }
+
+// Collects the colors shapes actually render with, following fill/stroke/color inheritance.
+const collectColors = (root: Record<string, any>) => {
+    const colors: string[] = [];
+    const add = (value: string | undefined, color: string) => {
+        const paint = value?.trim();
+        if (!paint || /^(none|transparent)$/i.test(paint) || /^url\(/i.test(paint)) {
+            return;
+        }
+        colors.push(/^currentcolor$/i.test(paint) ? color : paint);
+    };
+    const walk = (node: unknown, tag: string, inherited: Paint) => {
+        if (Array.isArray(node)) {
+            node.forEach(child => walk(child, tag, inherited));
+            return;
+        }
+        if (!node || typeof node !== 'object') {
+            return;
+        }
+        const obj = node as Record<string, unknown>;
+        const style: Record<string, string> = {};
+        if (typeof obj['@_style'] === 'string') {
+            for (const [, prop, value] of obj['@_style'].matchAll(/(?:^|;)\s*([\w-]+)\s*:\s*([^;]+)/g)) {
+                style[prop.toLowerCase()] = value;
+            }
+        }
+        const own = (prop: string) => {
+            const value = style[prop] ?? obj[`@_${prop}`];
+            return value === undefined || /^inherit$/i.test(String(value)) ? undefined : String(value);
+        };
+        const color = own('color');
+        const paint: Paint = {
+            fill: own('fill') ?? inherited.fill,
+            stroke: own('stroke') ?? inherited.stroke,
+            color: color && !/^currentcolor$/i.test(color) ? color : inherited.color,
+        };
+        if (SHAPE_TAGS.has(tag)) {
+            // Shapes with no fill anywhere up the tree are filled black.
+            add(paint.fill ?? '#000000', paint.color);
+            add(paint.stroke, paint.color);
+        }
+        add(own('stop-color'), paint.color);
+        for (const key of Object.keys(obj)) {
+            // Shapes in clip paths and masks only shape other content, they aren't seen.
+            if (!key.startsWith('@_') && !key.startsWith('#') && key !== 'clipPath' && key !== 'mask') {
+                walk(obj[key], key, paint);
+            }
+        }
+    };
+    walk(root, 'svg', { color: '#000000' });
+    return colors;
+}
+
+// Hover popup background luminance for dark (#252526) and light (#f3f3f3) themes.
+const THEME_LUMINANCE = { dark: 0.018, light: 0.896 };
+
+/** Picks a background only when the SVG's colors are hard to see on the theme. */
+const pickAutoBackground = (root: Record<string, any>, theme: 'dark' | 'light') => {
+    const luminances = collectColors(root)
+        .map(getLuminance)
+        .filter((l): l is number => l !== undefined);
+    const hidden = luminances.filter(l => contrastRatio(l, THEME_LUMINANCE[theme]) < 2);
+    if (!hidden.length) {
+        return undefined;
+    }
+    if (hidden.length < luminances.length) {
+        return 'checkerboard';
+    }
+    return theme === 'dark' ? '#f3f3f3' : '#1f1f1f';
 }
 
 // Reads the width/height ratio from the viewBox, falling back to width/height.
@@ -172,7 +252,8 @@ const wrapWithBackground = (innerSvg: string, width: number, height: number, pad
  * Returns undefined when the code can't be parsed as an SVG.
  */
 export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImage | undefined => {
-    const { size, keepAspectRatio, previewColor, background } = options;
+    const { size, keepAspectRatio, previewColor, theme = 'dark' } = options;
+    let { background } = options;
     let svgObj: Record<string, any>;
     try {
         svgObj = parser.parse(stripJsx(code));
@@ -198,6 +279,21 @@ export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImag
     }
 
     const originalSize = { height: root['@_height'], width: root['@_width'] };
+    if (previewColor) {
+        // An SVG rendered as an image has no inherited color, so currentColor and
+        // the default fill both resolve to black unless set on the root element.
+        // color="currentColor" or "inherit" on the root has nothing to inherit from either.
+        if (isUnsetColor(root['@_color'])) {
+            root['@_color'] = previewColor.color;
+        }
+        if (previewColor.applyToFill && isUnsetColor(root['@_fill'])) {
+            root['@_fill'] = previewColor.color;
+        }
+    }
+    // Runs after the preview color is applied, so it sees the colors that will render.
+    if (background === 'auto') {
+        background = pickAutoBackground(root, theme);
+    }
     let renderedSize: SvgImage['renderedSize'];
     // The background's padding fits inside the requested size.
     const padding = background && size ? Math.max(2, Math.round(size * 0.08)) : 0;
@@ -215,16 +311,14 @@ export const svg2Base64 = (code: string, options: SvgImageOptions = {}): SvgImag
             : { width: Math.max(1, Math.round(box * ratio)), height: box };
         root['@_width'] = renderedSize.width;
         root['@_height'] = renderedSize.height;
-    }
-    if (previewColor) {
-        // An SVG rendered as an image has no inherited color, so currentColor and
-        // the default fill both resolve to black unless set on the root element.
-        // color="currentColor" or "inherit" on the root has nothing to inherit from either.
-        if (isUnsetColor(root['@_color'])) {
-            root['@_color'] = previewColor.color;
-        }
-        if (previewColor.applyToFill && isUnsetColor(root['@_fill'])) {
-            root['@_fill'] = previewColor.color;
+        // CSS sizes in `style` would override the width/height attributes.
+        if (typeof root['@_style'] === 'string') {
+            const style = root['@_style'].replace(/(?:^|;)\s*(?:min-|max-)?(?:width|height)\s*:[^;]*/gi, '').replace(/^\s*;\s*/, '').trim();
+            if (style) {
+                root['@_style'] = style;
+            } else {
+                delete root['@_style'];
+            }
         }
     }
 

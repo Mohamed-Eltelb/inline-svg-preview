@@ -54,34 +54,6 @@ export const findIncludedFiles = async (filter: FileFilter) => {
     return [...unique.values()].sort((a, b) => a.path.localeCompare(b.path))
 }
 
-const NAMED_COLORS: Record<string, string> = {
-    white: '#ffffff', black: '#000000', red: '#ff0000', green: '#008000', blue: '#0000ff',
-    yellow: '#ffff00', orange: '#ffa500', gray: '#808080', grey: '#808080', silver: '#c0c0c0',
-}
-
-// Whether a CSS color is light, for the hex, rgb() and a few named forms. Undefined if unknown.
-const isLightColor = (color: string): boolean | undefined => {
-    const value = NAMED_COLORS[color.trim().toLowerCase()] ?? color.trim()
-    let rgb: number[] | undefined
-    const hex = /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(value)
-    if (hex) {
-        const digits = hex[1].length <= 4 ? [...hex[1]].map(d => d + d).join('') : hex[1]
-        rgb = [0, 2, 4].map(i => parseInt(digits.slice(i, i + 2), 16))
-    }
-    const fn = /^rgba?\(\s*(\d+)[\s,]+(\d+)[\s,]+(\d+)/i.exec(value)
-    if (fn) {
-        rgb = fn.slice(1, 4).map(Number)
-    }
-    if (!rgb) {
-        return undefined
-    }
-    const [r, g, b] = rgb.map(c => {
-        const s = c / 255
-        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4
-    })
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.18
-}
-
 /** Inline icon size in px: the setting, or the editor font size when unset. */
 export const getInlineSize = (document?: vscode.TextDocument) => {
     const size = vscode.workspace.getConfiguration(CONFIG_SECTION).get<number | null>('inlineSize')
@@ -94,23 +66,18 @@ export const getHoverSize = () =>
     Math.max(8, vscode.workspace.getConfiguration(CONFIG_SECTION).get<number>('hoverSize', 50))
 
 /**
- * The hover image background: `checkerboard`, a CSS color, or undefined for none.
- * `contrast` becomes a dark or light color, opposite to the preview color.
+ * The hover image background: `auto` (decided per SVG), `checkerboard`,
+ * a CSS color, or undefined for none.
  */
-export const getHoverBackground = (previewColor: PreviewColor | undefined): string | undefined => {
-    const background = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('hoverBackground', 'none').trim()
-    if (!background || background === 'none') {
-        return undefined
-    }
-    if (background !== 'contrast') {
-        return background
-    }
-    // With no preview color, currentColor renders black.
-    const light = previewColor ? isLightColor(previewColor.color) : false
-    if (light === undefined) {
-        return 'checkerboard'
-    }
-    return light ? '#1f1f1f' : '#f3f3f3'
+export const getHoverBackground = (): string | undefined => {
+    const background = vscode.workspace.getConfiguration(CONFIG_SECTION).get<string>('hoverBackground', 'auto').trim()
+    return !background || background === 'none' ? undefined : background
+}
+
+/** Whether the active color theme is dark or light. */
+export const getThemeKind = (): 'dark' | 'light' => {
+    const { kind } = vscode.window.activeColorTheme
+    return kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast ? 'dark' : 'light'
 }
 
 export const getPreviewColor = (): PreviewColor | undefined => {
@@ -119,10 +86,8 @@ export const getPreviewColor = (): PreviewColor | undefined => {
     if (!color) {
         return undefined
     }
-    const { kind } = vscode.window.activeColorTheme
-    const isDark = kind === vscode.ColorThemeKind.Dark || kind === vscode.ColorThemeKind.HighContrast
     return {
-        color: color === 'auto' ? (isDark ? '#cccccc' : '#333333') : color,
+        color: color === 'auto' ? (getThemeKind() === 'dark' ? '#cccccc' : '#333333') : color,
         applyToFill: config.get<boolean>('applyColorToFill', true),
     }
 }

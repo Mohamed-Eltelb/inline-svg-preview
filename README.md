@@ -18,7 +18,7 @@ Previews show in every file you open, whether or not it's in the workspace.
 | "inlineSvgPreview.applyColorToFill"  | `boolean` | `false` | `true` (also use the color as the default fill)
 | "inlineSvgPreview.inlineSize"  | `null` \| `number` | `18` | `null` (editor font size)
 | "inlineSvgPreview.hoverSize"  | `number` | `120` | `50`
-| "inlineSvgPreview.hoverBackground"  | `string` | `"checkerboard"` | `"none"` (also `"contrast"` or any CSS color)
+| "inlineSvgPreview.hoverBackground"  | `string` | `"checkerboard"` | `"auto"` (background only when the SVG is hard to see; also `"none"` or any CSS color)
 
 ## SVG Gallery
 

@@ -75,8 +75,8 @@
 					},
 					"inlineSvgPreview.hoverBackground": {
 						"type": "string",
-						"default": "none",
-						"markdownDescription": "Background behind the hover image:\n- `none`: the hover popup background\n- `checkerboard`: a gray checkerboard, so both dark and light icons stay visible\n- `contrast`: dark or light, opposite to `#inlineSvgPreview.currentColor#`\n- any CSS color, e.g. `#ffffff`"
+						"default": "auto",
+						"markdownDescription": "Background behind the hover image:\n- `auto`: only when the SVG's colors are hard to see on your theme; a solid opposite shade, or a checkerboard for mixed dark and light colors\n- `none`: the hover popup background\n- `checkerboard`: always a gray checkerboard\n- any CSS color, e.g. `#ffffff`"
 					}
 				}
 			}
